@@ -39,8 +39,8 @@
                 <input name="import-step-2" type="submit" value="Next step"/>
             </fieldset>
             <fieldset class="right">
-                <h3>Export CSV</h3>
-                <p>Please choose a section you wish to export to a CSV file:</p>
+                <h3>Export CSV/Excel</h3>
+                <p>Please choose a section you wish to export to a CSV or Excel file:</p>
                 <label>
                     <select name="section-export" class="small">
                         <xsl:for-each select="data/sections/section">
@@ -50,12 +50,13 @@
                         </xsl:for-each>
                     </select>
                 </label>
-                <input name="export" type="submit" value="Export CSV"/>
+                <input name="export" type="submit" value="Export CSV"/>   <input name="exportxls" type="submit" value="Export Excel"/>
                 <p>
                     <br/>
                     <strong>Tip:</strong>
                     You can also create a direct link to export a certain section by creating a link such as<code>
-                    /symphony/extension/importcsv/?export&amp;section-export=9</code>, where
+                    /symphony/extension/importcsv/?export&amp;section-export=9</code> for CSV or <code>
+                    /symphony/extension/importcsv/?exportxls&amp;section-export=9</code> for Excel, where
                     <code>9</code>
                     is the ID number of the section you wish to export. In combination with the
                     <a href="http://symphonyextensions.com/extensions/publish_shortcuts/">publish shortcuts extension</a>

@@ -41,7 +41,11 @@ class contentExtensionImportcsvIndex extends AdministrationPage
         } elseif (isset($_REQUEST['export'])) {
             // Export:
             $this->__exportPage();
-        } elseif (isset($_POST['ajax'])) {
+        } elseif (isset($_REQUEST['exportxls'])) {
+			// Export:
+            $this->__exportExcel();
+        }
+		elseif (isset($_POST['ajax'])) {
             // Ajax import:
             $this->__ajaxImportRows();
         } elseif (isset($_POST['multilanguage-export'])) {
@@ -442,6 +446,107 @@ class contentExtensionImportcsvIndex extends AdministrationPage
                 echo implode(';', $line) . "\r\n";
             }
         }
+        die();
+    }
+	
+	    private function __exportExcel()
+    {
+        // Load the drivers:
+        $drivers = $this->getDrivers();
+
+        // Get the fields of this section:
+        $sectionID = $_REQUEST['section-export'];
+        $sm = new SectionManager($this);
+        $em = new EntryManager($this);
+        $section = $sm->fetch($sectionID);
+        $fileName = $section->get('handle') . '_' . date('Y-m-d') . '.xls';
+        $fields = $section->fetchFields();
+
+        $headers = array();
+        foreach ($fields as $field)
+        {
+            $headers[] = '"' . str_replace('"', '""', $field->get('label')) . '"';
+        }
+		
+		header('Content-Disposition: attachment; filename="' . $fileName . '"');
+		header('Content-type: application/vnd.ms-excel');
+
+        // Show the headers:
+        echo implode("\t", $headers) . "\r\n";
+
+         /*
+         * Enable filtering!
+         * Use the same filtering as with publish indexes (ie: ?filter=[field]:value)
+         */
+        $filter = $filter_value = $where = $joins = NULL;
+        if (isset($_REQUEST['filter'])) {
+
+            list($field_handle , $filter_value) = explode(':' , $_REQUEST['filter'] , 2);
+
+            $field_names = explode(',' , $field_handle);
+
+            foreach ($field_names as $field_name) {
+
+                $filter_value = rawurldecode($filter_value);
+
+                $filter = Symphony::Database()->fetchVar('id' , 0 , "SELECT `f`.`id`
+										  FROM `tbl_fields` AS `f`, `tbl_sections` AS `s`
+										  WHERE `s`.`id` = `f`.`parent_section`
+										  AND f.`element_name` = '$field_name'
+										  AND `s`.`handle` = '" . $section->get('handle') . "' LIMIT 1");
+
+                $field = FieldManager::fetch($filter);
+
+                if ($field instanceof Field) {
+                    // For deprecated reasons, call the old, typo'd function name until the switch to the
+                    // properly named buildDSRetrievalSQL function.
+                    $field->buildDSRetrivalSQL(array($filter_value) , $joins , $where , false);
+                    $filter_value = rawurlencode($filter_value);
+                }
+            }
+
+            if (!is_null($where)) {
+                $where = str_replace('AND' , 'OR' , $where); // multiple fields need to be OR
+                $where = trim($where);
+                $where = ' AND (' . substr($where , 2 , strlen($where)) . ')'; // replace leading OR with AND
+            }
+
+        }
+        /*
+         * End
+         */
+
+        // Show the content:
+        $total = $em->fetchCount($sectionID,$where,$joins);
+        for($offset = 0; $offset < $total; $offset += 100)
+
+        {
+            $entries = $em->fetch(null, $sectionID, 100, $offset, $where, $joins);
+            
+            foreach ($entries as $entry)
+            {
+                $line = array();
+                foreach ($fields as $field)
+                {
+                    $data = $entry->getData($field->get('id'));
+                    $type = $field->get('type');
+                    if (isset($drivers[$type])) {
+                        $drivers[$type]->setField($field);
+                        $value = $drivers[$type]->export($data, $entry->get('id'));
+                    } else {
+                        $drivers['default']->setField($field);
+                        $value = $drivers['default']->export($data, $entry->get('id'));
+                    }
+					
+					$line[] = '"' . str_replace('"', '""', trim($value)) . '"';
+    
+   
+                }
+                
+				echo implode("\t", $line) . "\r\n";
+            }
+        }
+        
         die();
     }
 
